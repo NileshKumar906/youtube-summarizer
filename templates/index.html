@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>YouTube Video Summarizer</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+
+  <!-- Use pdfMake instead of jsPDF for proper Unicode PDF support -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      font-family: 'Inter', sans-serif;
+      background-color: #f0f2f5;
+      padding: 20px;
+      height: 100%;
+      transition: background-color 0.3s;
+    }
+
+    body.dark-mode {
+      background-color: #121212;
+      color: #f1f1f1;
+    }
+
+    .container {
+      background-color: #fff;
+      max-width: 1000px;
+      margin: auto;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+      min-height: 90vh;
+      display: flex;
+      flex-direction: column;
+      transition: background-color 0.3s;
+    }
+
+    body.dark-mode .container { background-color: #1e1e1e; }
+    h1 { text-align: center; font-size: 2.2rem; color: #333; margin-bottom: 8px; }
+    body.dark-mode h1 { color: #fff; }
+
+    .description {
+      text-align: center;
+      margin-bottom: 25px;
+      color: #666;
+      font-size: 1rem;
+    }
+    body.dark-mode .description { color: #bbb; }
+
+    form {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-bottom: 20px;
+    }
+
+    input[type="text"], select {
+      flex: 1;
+      min-width: 280px;
+      padding: 14px;
+      font-size: 1rem;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+    }
+
+    select {
+      max-width: 180px;
+    }
+
+    button {
+      padding: 14px 24px;
+      font-size: 1rem;
+      font-weight: bold;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+
+    button:hover { background-color: #0056b3; }
+
+    .error {
+      color: #dc3545;
+      text-align: center;
+      font-weight: 500;
+      margin-top: 10px;
+    }
+
+    .summary-box {
+      background: #f9f9f9;
+      border-left: 6px solid #007bff;
+      padding: 20px;
+      border-radius: 10px;
+      color: #333;
+      line-height: 1.6;
+      font-size: 1.05rem;
+      white-space: pre-wrap;
+      flex-grow: 1;
+      overflow-y: auto;
+      margin-top: 20px;
+      max-height: 350px;
+    }
+
+    .summary-box h2 {
+      margin-bottom: 10px;
+      font-size: 1.3rem;
+      color: #007bff;
+    }
+
+    .summary-box textarea {
+      width: 100%;
+      height: 220px;
+      border: none;
+      background: transparent;
+      resize: none;
+      color: inherit;
+    }
+
+    .controls {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      margin-top: 15px;
+      flex-wrap: wrap;
+    }
+
+    .controls button {
+      background-color: #28a745;
+    }
+
+    .controls button:hover {
+      background-color: #1c7c31;
+    }
+
+    .toggle-btn {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      background: #007bff;
+      color: white;
+      border: none;
+      padding: 10px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    @media (max-width: 768px) {
+      .container { padding: 20px; }
+      form { flex-direction: column; align-items: stretch; }
+      button, select { width: 100%; }
+      .toggle-btn { top: 10px; right: 10px; }
+    }
+  </style>
+</head>
+<body>
+
+  <button class="toggle-btn" onclick="toggleTheme()">🌗 Theme</button>
+
+  <div class="container">
+    <h1>🎬 YouTube Video Summarizer</h1>
+    <p class="description">Paste a YouTube link below to get a smart summary. Choose language if needed.</p>
+
+    <form method="post">
+      <input type="text" name="youtube_url" placeholder="🔗 Paste YouTube video URL here..." required>
+      <select name="language">
+        <option value="en" {% if selected_language == 'en' %}selected{% endif %}>English</option>
+        <option value="hi" {% if selected_language == 'hi' %}selected{% endif %}>Hindi</option>
+        <option value="bn" {% if selected_language == 'bn' %}selected{% endif %}>Bengali</option>
+        <option value="ta" {% if selected_language == 'ta' %}selected{% endif %}>Tamil</option>
+        <option value="te" {% if selected_language == 'te' %}selected{% endif %}>Telugu</option>
+        <option value="gu" {% if selected_language == 'gu' %}selected{% endif %}>Gujarati</option>
+        <option value="es" {% if selected_language == 'es' %}selected{% endif %}>Spanish</option>
+        <option value="fr" {% if selected_language == 'fr' %}selected{% endif %}>French</option>
+        <option value="zh-cn" {% if selected_language == 'zh-cn' %}selected{% endif %}>Chinese</option>
+      </select>
+      <button type="submit">⚡ Summarize</button>
+    </form>
+
+    {% if error %}
+      <p class="error">❌ {{ error }}</p>
+    {% endif %}
+
+    {% if summary %}
+      <div class="summary-box">
+        <h2>📝 Summary:</h2>
+        <textarea id="summaryText" readonly>{{ summary }}</textarea>
+      </div>
+
+      {% if translated_summary %}
+      <div class="summary-box">
+        <h2>🌐 Translated Summary ({{ selected_language }}):</h2>
+        <textarea id="translatedText" readonly>{{ translated_summary }}</textarea>
+      </div>
+      {% endif %}
+
+      <div class="controls">
+        <button onclick="copySummary()">📋 Copy</button>
+        <button onclick="downloadPDF()">⬇️ Download PDF</button>
+      </div>
+    {% endif %}
+  </div>
+
+  <script>
+    function toggleTheme() {
+      document.body.classList.toggle("dark-mode");
+    }
+
+    function copySummary() {
+      const text = document.getElementById("translatedText") || document.getElementById("summaryText");
+      text.select();
+      document.execCommand("copy");
+      alert("✅ Summary copied to clipboard!");
+    }
+
+    function downloadPDF() {
+      const textArea = document.getElementById("translatedText") || document.getElementById("summaryText");
+      const summary = textArea.value;
+
+      const docDefinition = {
+        content: [
+          { text: 'YouTube Video Summary', style: 'header' },
+          { text: summary, style: 'body', margin: [0, 10, 0, 0] }
+        ],
+        styles: {
+          header: { fontSize: 18, bold: true, alignment: 'center' },
+          body: { fontSize: 12, alignment: 'justify' }
+        },
+        defaultStyle: { font: 'Roboto' }
+      };
+
+      pdfMake.createPdf(docDefinition).download("YouTube_Summary.pdf");
+    }
+  </script>
+</body>
+</html>
