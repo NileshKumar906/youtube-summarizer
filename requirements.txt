@@ -25,7 +25,6 @@ flask-cors==6.0.1
 frozenlist==1.7.0
 fsspec==2025.3.0
 future==1.0.0
-gensim==4.3.3
 google-ai-generativelanguage==0.6.15
 google-api-core==2.25.1
 google-api-python-client==2.176.0
